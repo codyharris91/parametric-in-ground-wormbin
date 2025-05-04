@@ -1,6 +1,6 @@
 # In-Ground Worm Bin
 
-![In-Ground Worm Bin](https://memesworms.com/cdn/shop/articles/img-1704563977603_25c76595-e8dd-43eb-90c0-af42219c1b06.jpg?v=1704564454&width=900)
+![In-Ground Worm Bin](images/worm_bin_render.png)
 
 A 3D printable design for an in-ground vermicomposting system that allows for efficient composting of kitchen scraps while providing protection from pests and extreme temperatures.
 
@@ -23,6 +23,54 @@ Vermicomposting is the process of using worms to transform organic waste into a 
 - Modular design for easy customization
 - Solid bottom to prevent unwanted pest entry
 - Open top for easy access (can be covered with a separate lid)
+
+## Customization
+
+You can customize the worm bin design by:
+
+1. **Using OpenSCAD Customizer**: Open `main.scad` in OpenSCAD and use the Customizer panel to adjust parameters
+2. **Editing Parameters Directly**: Modify the parameters at the top of `main.scad`
+
+Key parameters include:
+
+- `outer_diameter`: Diameter of the outer shell
+- `outer_height`: Height of the outer shell
+- `outer_wall_thickness`: Wall thickness of both shells
+- `tolerance`: Gap between inner and outer shells
+- `ridge_width` and `ridge_depth`: Dimensions of alignment features
+- `ridge_count`: Number of alignment ridges/channels
+
+## Using the Tools
+
+### Generating STL Files
+
+The project includes a Python script to generate STL files with various quality settings:
+
+```bash
+# Basic usage (default quality)
+python tools/generate_stl.py
+
+# Generate high-quality STLs (smoother curves, larger files)
+python tools/generate_stl.py --quality 200
+
+# Generate low-quality STLs (faster, smaller files)
+python tools/generate_stl.py --quality 50
+
+# Generate STLs to a custom location
+python tools/generate_stl.py --output-dir "./exports"
+```
+
+The quality parameter (`--quality`) controls the smoothness of curved surfaces. Higher values produce smoother curves but take longer to generate and result in larger files.
+
+### Creating a Monolithic File
+
+If you want to share or archive the design as a single file:
+
+```bash
+python tools/combine_files.py
+```
+
+This will create a single OpenSCAD file in the `build` directory that contains all the code from the separate files combined.
 
 ## Materials Considerations
 
@@ -53,7 +101,7 @@ When printing components that will be in contact with materials that eventually 
 
 ### Printing the Components
 
-1. Download the STL files from the `stl` directory or generate them from the SCAD files
+1. Generate STL files using the provided script or export directly from OpenSCAD
 2. Print with the following recommended settings:
    - Layer Height: 0.2-0.3mm
    - Infill: 80-100%
@@ -116,5 +164,12 @@ When printing components that will be in contact with materials that eventually 
    - After 3-6 months, lift the inner shell to harvest finished compost
    - Replace with fresh bedding and continue the cycle
 
-## Project Structure
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- Inspired by traditional in-ground vermicomposting systems
+- Designed to be easily 3D printable with minimal supports
 

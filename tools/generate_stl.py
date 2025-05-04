@@ -8,7 +8,17 @@ import os
 import sys
 import subprocess
 import platform
+import argparse
 from pathlib import Path
+
+def parse_arguments():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description="Generate STL files from OpenSCAD files.")
+    parser.add_argument("--quality", type=int, default=100, 
+                        help="Quality of STL generation (sets $fn value, higher = smoother curves). Default: 100")
+    parser.add_argument("--output-dir", type=str, default=None,
+                        help="Custom output directory for STL files. Default: PROJECT_ROOT/stl")
+    return parser.parse_args()
 
 # Define the project structure
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -22,6 +32,7 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 COMPONENTS = [
     {"file": "inner-shell.scad", "output": "inner-shell.stl", "module": "inner_shell"},
     {"file": "outer-shell.scad", "output": "outer-shell.stl", "module": "outer_shell"},
+    {"file": "top-cap.scad", "output": "top-cap.stl", "module": "top_cap"},
 ]
 
 def find_openscad():
@@ -94,55 +105,92 @@ def check_openscad(openscad_cmd):
     except (subprocess.SubprocessError, FileNotFoundError):
         return False
 
-def generate_stl(openscad_cmd, input_file, output_file, module_name=None):
+def generate_stl(openscad_cmd, input_file, output_file, module_name=None, quality=100):
     """Generate an STL file from an OpenSCAD file."""
     input_path = COMPONENTS_DIR / input_file
     output_path = OUTPUT_DIR / output_file
     
-    print(f"Generating {output_path} from {input_path}...")
+    print(f"Generating {output_path} from {input_path} (quality: $fn={quality})...")
     
-    cmd = [openscad_cmd, "-o", str(output_path)]
-    
-    # If a specific module is provided, use it
-    if module_name:
-        cmd.extend(["--export-format=binstl", "-D", f"render_module=\"{module_name}\""])
-    
-    cmd.append(str(input_path))
+    # Create temporary file with proper module call and quality setting
+    temp_file = PROJECT_ROOT / "temp.scad"
+    with open(temp_file, "w") as f:
+        f.write(f'$fn = {quality};\n')
+        f.write(f'use <{input_path.relative_to(PROJECT_ROOT)}>;\n')
+        
+        if module_name:
+            # Call the module with all parameters it might have (getting them from main)
+            f.write('include <main.scad>;\n')
+            
+            if module_name == "inner_shell":
+                f.write(f'{module_name}(\n')
+                f.write(f'    inner_diameter = inner_diameter,\n')
+                f.write(f'    inner_height = inner_height,\n')
+                f.write(f'    outer_wall_thickness = outer_wall_thickness,\n')
+                f.write(f'    ridge_width = ridge_width,\n')
+                f.write(f'    ridge_depth = ridge_depth,\n')
+                f.write(f'    ridge_count = ridge_count\n')
+                f.write(f');\n')
+            elif module_name == "outer_shell":
+                f.write(f'{module_name}(\n')
+                f.write(f'    outer_diameter = outer_diameter,\n')
+                f.write(f'    outer_height = outer_height,\n')
+                f.write(f'    outer_wall_thickness = outer_wall_thickness,\n')
+                f.write(f'    ridge_width = ridge_width,\n')
+                f.write(f'    ridge_depth = ridge_depth,\n')
+                f.write(f'    ridge_count = ridge_count,\n')
+                f.write(f'    tolerance = tolerance\n')
+                f.write(f');\n')
+            elif module_name == "top_cap":
+                f.write(f'{module_name}(\n')
+                f.write(f'    outer_diameter = outer_diameter,\n')
+                f.write(f'    outer_wall_thickness = outer_wall_thickness,\n')
+                f.write(f'    cap_height = cap_height,\n')
+                f.write(f'    cap_thickness = cap_thickness,\n')
+                f.write(f'    cap_tolerance = cap_tolerance,\n')
+                f.write(f'    top_diameter_ratio = top_diameter_ratio,\n')
+                f.write(f'    platform_height = platform_height,\n')
+                f.write(f'    grip_notches = grip_notches\n')
+                f.write(f');\n')
+        else:
+            # Just use the file as is
+            f.write(f'// Direct rendering of {input_file}\n')
     
     try:
-        subprocess.run(cmd, check=True)
+        # Run OpenSCAD on the temporary file
+        subprocess.run([
+            openscad_cmd,
+            "-o", str(output_path),
+            str(temp_file)
+        ], check=True)
+        
+        # Remove the temporary file
+        os.remove(temp_file)
+        
         print(f"Successfully generated {output_path}")
         return True
     except subprocess.SubprocessError as e:
         print(f"Error generating {output_path}: {e}")
-        # Try alternative approach if the first one fails
-        if module_name:
-            print("Trying alternative approach...")
-            try:
-                # Create a temporary file that calls the module explicitly
-                temp_file = PROJECT_ROOT / "temp.scad"
-                with open(temp_file, "w") as f:
-                    f.write(f'include "{input_path}";\n{module_name}();')
-                
-                # Run OpenSCAD on the temporary file
-                subprocess.run([
-                    openscad_cmd,
-                    "-o", str(output_path),
-                    str(temp_file)
-                ], check=True)
-                
-                # Remove the temporary file
-                os.remove(temp_file)
-                
-                print(f"Successfully generated {output_path} using alternative approach")
-                return True
-            except Exception as e2:
-                print(f"Alternative approach also failed: {e2}")
-                return False
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
         return False
 
 def main():
     """Main function to generate STL files."""
+    global OUTPUT_DIR
+    
+    # Parse command-line arguments
+    args = parse_arguments()
+    
+    # Set output directory
+    if args.output_dir:
+        OUTPUT_DIR = Path(args.output_dir)
+    else:
+        OUTPUT_DIR = PROJECT_ROOT / "stl"
+    
+    # Ensure the output directory exists
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    
     # Try to find OpenSCAD
     openscad_cmd = find_openscad()
     
@@ -161,15 +209,17 @@ def main():
         return 1
     
     print(f"Using OpenSCAD at: {openscad_cmd}")
+    print(f"Generating STL files with quality setting: $fn={args.quality}")
     
     # Generate STL files
     success = True
     for component in COMPONENTS:
-        if not generate_stl(openscad_cmd, component["file"], component["output"], component.get("module")):
+        if not generate_stl(openscad_cmd, component["file"], component["output"], 
+                         component.get("module"), args.quality):
             success = False
     
     # Also generate a complete model STL if needed
-    # generate_stl(openscad_cmd, "main.scad", "complete_model.stl")
+    # generate_stl(openscad_cmd, "main.scad", "complete_model.stl", None, args.quality)
     
     if success:
         print("\nAll STL files generated successfully!")
