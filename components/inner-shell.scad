@@ -27,7 +27,5 @@ module inner_shell() {
     }
 }
 
-// Only render when this file is opened directly
-if ($filename == "inner-shell.scad") {
-    inner_shell();
-} 
+// Always render the inner shell when this file is processed directly
+inner_shell(); 

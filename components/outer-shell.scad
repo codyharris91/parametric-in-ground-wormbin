@@ -28,7 +28,5 @@ module outer_shell() {
     }
 }
 
-// Only render when this file is opened directly
-if ($filename == "outer-shell.scad") {
-    outer_shell();
-} 
+// Always render the outer shell when this file is processed directly
+outer_shell(); 
