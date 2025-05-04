@@ -1,6 +1,6 @@
 # In-Ground Worm Bin
 
-![In-Ground Worm Bin](images/worm_bin_render.png)
+![In-Ground Worm Bin](https://memesworms.com/cdn/shop/articles/img-1704563977603_25c76595-e8dd-43eb-90c0-af42219c1b06.jpg?v=1704564454&width=900)
 
 A 3D printable design for an in-ground vermicomposting system that allows for efficient composting of kitchen scraps while providing protection from pests and extreme temperatures.
 
